@@ -1,11 +1,4 @@
-package srcpackage;
-
-import java.util.Random;
-import java.util.Vector;
-
-import srcpackage.Environment.observation;
-
-import java.util.Arrays;
+import java.util.*;
 
 public class Qlearning {
     private int[] optimalPolicy;
@@ -15,8 +8,8 @@ public class Qlearning {
     private double maxEpisode;
 
     public Qlearning(int maxEpisode, Environment environment) {
-        this.towersOfHanoi = new Environment();
-        this.optimalPolicy = new int[]{-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1};
+        towersOfHanoi = new Environment();
+        optimalPolicy = new int[]{-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1};
         if (maxEpisode <= 1) {
             this.maxEpisode = 100;
             System.out.println("Invalid parameter. The number of iterations have been set to the default value.");
@@ -28,8 +21,8 @@ public class Qlearning {
 		We can use the function getAvailableActions
 		to get the valid actions for each state.
 		*/
-        this.QValues = new double[12][6];
-        this.occurrence = new int[12][6];
+        QValues = new double[12][6];
+        occurrence = new int[12][6];
         fillRowsWithOnes(occurrence, occurrence.length - 1, occurrence[0].length);
     }
 
@@ -42,14 +35,19 @@ public class Qlearning {
         }
     }
 
-    public void learn() {
+    public void learn(double omega) {
         int episodeNum = 1;
         boolean explore = false;
         int action;
-        while (this.maxEpisode > episodeNum) {
-            int state = this.towersOfHanoi.getCurrentState();
-            int[] availableActions = this.towersOfHanoi.getAvailableActions(state);
-            //We ensure exploration by choosing random action in the random state
+
+        ArrayList<ArrayList<Integer>> performedActions = getInitialPerformed();
+
+
+        while (maxEpisode > episodeNum) {
+            int state = towersOfHanoi.getCurrentState();
+            int[] availableActions = towersOfHanoi.getAvailableActions(state);
+
+            // We ensure exploration by choosing random action in the random state
             if (explore) {
                 //choose a random action
                 action = chooseAction(availableActions);
@@ -58,23 +56,37 @@ public class Qlearning {
             //After the random state we use exploitation
             else {
                 //choose the best action according to the current Q values
-                action = bestAction(state);
+                action = bestAction(state, performedActions.get(state));
             }
-            observation obs = this.towersOfHanoi.execute(action);
+            Environment.observation obs = towersOfHanoi.execute(action);
+            // save performed action
+            if(!performedActions.get(state).contains(action)) performedActions.get(state).add(action);
+
             //terminal state
             double NextQMax = 0;
             if (obs.newState == 4) {
                 episodeNum++;
-                this.towersOfHanoi.setRandomState();
+                towersOfHanoi.setRandomState();
                 explore = true;
+
+                // reset performed actions
+                performedActions = getInitialPerformed();
             } else
                 NextQMax = maxQ(obs.newState);
             //update the Q value
-            double change = obs.reward + 0.9 * NextQMax - this.QValues[state][action];
-            this.QValues[state][action] += 1.0 / occurrence[state][action] * change;
+            double change = obs.reward + 0.9 * NextQMax - QValues[state][action];
+            QValues[state][action] += 1.0 / Math.pow(occurrence[state][action], omega) * change;
             occurrence[state][action]++;
         }
         updateOptimalPolicy();
+    }
+
+    private ArrayList<ArrayList<Integer>> getInitialPerformed(){
+        ArrayList<ArrayList<Integer>> performedActions = new ArrayList<>();
+        for(int i = 0; i < 12; i ++){
+            performedActions.add(i, new ArrayList<Integer>());
+        }
+        return performedActions;
     }
 
     private void updateOptimalPolicy() {
@@ -82,21 +94,21 @@ public class Qlearning {
             //we do not update the best action for the terminal state
             if (state == 4)
                 continue;
-            this.optimalPolicy[state] = bestAction(state);
+            this.optimalPolicy[state] = bestAction(state, Collections.emptyList() );
         }
     }
 
-    private int bestAction(int state) {
+    private int bestAction(int state, List<Integer> excludeActions) {
         int[] actions = this.towersOfHanoi.getAvailableActions(state);
         double maxValue = -Double.MAX_VALUE;
         Vector<Integer> bestActions = new Vector<>();
         for (int action : actions) {
-            if (this.QValues[state][action] > maxValue) {
-                maxValue = this.QValues[state][action];
+            if ((!excludeActions.contains(action) || actions.length == excludeActions.size()) && QValues[state][action] > maxValue) {
+                maxValue = QValues[state][action];
             }
         }
         for (int action : actions) {
-            if (this.QValues[state][action] == maxValue)
+            if (QValues[state][action] == maxValue)
                 bestActions.add(action);
         }
 
@@ -119,17 +131,17 @@ public class Qlearning {
         int[] actions = this.towersOfHanoi.getAvailableActions(state);
         double maxValue = -Double.MAX_VALUE;
         for (int action : actions) {
-            if (this.QValues[state][action] > maxValue)
-                maxValue = this.QValues[state][action];
+            if (QValues[state][action] > maxValue)
+                maxValue = QValues[state][action];
         }
         return maxValue;
     }
 
     public int[] getOptimalPolicy() {
-        return this.optimalPolicy;
+        return optimalPolicy;
     }
 
     public double[][] getQValues() {
-        return this.QValues;
+        return QValues;
     }
 }

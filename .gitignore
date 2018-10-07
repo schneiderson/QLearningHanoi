@@ -28,4 +28,6 @@ hs_err_pid*
 /.settings
 .classpath
 .project
+/.gradle
+/build
 TDLearning.iml

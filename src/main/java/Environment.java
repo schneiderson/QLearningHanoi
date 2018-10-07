@@ -1,5 +1,3 @@
-package srcpackage;
-
 import java.util.Random;
 
 public class Environment {
