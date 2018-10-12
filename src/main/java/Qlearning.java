@@ -6,6 +6,11 @@ public class Qlearning {
     private int[][] occurrence;
     private Environment towersOfHanoi;
     private double maxEpisode;
+    private LearningRate TWENTYOVERTWENTYPLUSONE;
+
+    public enum LearningRate {
+        LINEARTWENTY, LINEARFIFTY, ONEOVERN, ONEOVERNPLUSN, TWOOVERTWOPLUSN
+    }
 
     public Qlearning(int maxEpisode, Environment environment) {
         towersOfHanoi = new Environment();
@@ -35,13 +40,10 @@ public class Qlearning {
         }
     }
 
-    public void learn(double omega) {
+    public void learn(LearningRate learningRateType) {
         int episodeNum = 1;
         boolean explore = false;
         int action;
-
-        ArrayList<ArrayList<Integer>> performedActions = getInitialPerformed();
-
 
         while (maxEpisode > episodeNum) {
             int state = towersOfHanoi.getCurrentState();
@@ -56,11 +58,9 @@ public class Qlearning {
             //After the random state we use exploitation
             else {
                 //choose the best action according to the current Q values
-                action = bestAction(state, performedActions.get(state));
+                action = bestAction(state);
             }
             Environment.observation obs = towersOfHanoi.execute(action);
-            // save performed action
-            if(!performedActions.get(state).contains(action)) performedActions.get(state).add(action);
 
             //terminal state
             double NextQMax = 0;
@@ -69,41 +69,53 @@ public class Qlearning {
                 towersOfHanoi.setRandomState();
                 explore = true;
 
-                // reset performed actions
-                performedActions = getInitialPerformed();
             } else
                 NextQMax = maxQ(obs.newState);
             //update the Q value
             double change = obs.reward + 0.9 * NextQMax - QValues[state][action];
-            QValues[state][action] += 1.0 / Math.pow(occurrence[state][action], omega) * change;
+
+            // determine learning rate
+            double learningRate = 0.2;
+            switch (learningRateType){
+                case LINEARTWENTY:
+                    learningRate = 0.2;
+                    break;
+                case LINEARFIFTY:
+                    learningRate = 0.5;
+                    break;
+                case ONEOVERN:
+                    learningRate = 1.0 / (occurrence[state][action]);
+                    break;
+                case ONEOVERNPLUSN:
+                    learningRate = 1.0 / (1 + occurrence[state][action]);
+                    break;
+                case TWOOVERTWOPLUSN:
+                    learningRate = 2.0 / (2 + occurrence[state][action]);
+                    break;
+            }
+
+            QValues[state][action] += learningRate * change;
             occurrence[state][action]++;
         }
         updateOptimalPolicy();
     }
 
-    private ArrayList<ArrayList<Integer>> getInitialPerformed(){
-        ArrayList<ArrayList<Integer>> performedActions = new ArrayList<>();
-        for(int i = 0; i < 12; i ++){
-            performedActions.add(i, new ArrayList<Integer>());
-        }
-        return performedActions;
-    }
 
     private void updateOptimalPolicy() {
         for (int state = 0; state < 12; state++) {
             //we do not update the best action for the terminal state
             if (state == 4)
                 continue;
-            this.optimalPolicy[state] = bestAction(state, Collections.emptyList() );
+            this.optimalPolicy[state] = bestAction(state);
         }
     }
 
-    private int bestAction(int state, List<Integer> excludeActions) {
+    private int bestAction(int state) {
         int[] actions = this.towersOfHanoi.getAvailableActions(state);
         double maxValue = -Double.MAX_VALUE;
         Vector<Integer> bestActions = new Vector<>();
         for (int action : actions) {
-            if ((!excludeActions.contains(action) || actions.length == excludeActions.size()) && QValues[state][action] > maxValue) {
+            if (QValues[state][action] > maxValue) {
                 maxValue = QValues[state][action];
             }
         }

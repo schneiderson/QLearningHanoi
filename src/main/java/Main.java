@@ -1,3 +1,5 @@
+import java.util.EnumSet;
+
 public class Main {
 
 	private static int repetitions;
@@ -5,21 +7,44 @@ public class Main {
 	public static void main(String[] args)
 	{
 		int[] episodeRanges = {10, 50, 100, 500, 1000, 5000};
-		double[] omegas = {0.5, .7, .9, 1.0};
+		EnumSet<Qlearning.LearningRate> learningRates = EnumSet.of(
+				Qlearning.LearningRate.LINEARTWENTY,
+				Qlearning.LearningRate.LINEARFIFTY,
+				Qlearning.LearningRate.ONEOVERNPLUSN,
+				Qlearning.LearningRate.TWOOVERTWOPLUSN
+			);
 
-		for( double omega : omegas){
 
-			System.out.println("Current Omega value: " + omega);
+		for(Qlearning.LearningRate learningRate : learningRates){
 
-			for( int episodes : episodeRanges){
+			switch(learningRate){
+				case LINEARFIFTY:
+					System.out.println("Current learning rate = 0.5");
+					break;
+				case LINEARTWENTY:
+					System.out.println("Current learning rate = 0.2");
+					break;
+				case ONEOVERN:
+					System.out.println("Current learning rate = 1/n");
+					break;
+				case ONEOVERNPLUSN:
+					System.out.println("Current learning rate = 1/1+n");
+					break;
+				case TWOOVERTWOPLUSN:
+					System.out.println("Current learning rate = 2/2+n");
+					break;
+			}
 
-				repetitions = 10;
+
+			for( int episodes : episodeRanges ){
+
+				repetitions = 1000;
 
 				double[][] allQvalues = new double[repetitions][];
 
 				int[] optimalPol = new int[0];
 				for(int i = 0; i < repetitions; i++){
-					Qlearning alg = runLearner(episodes, omega);
+					Qlearning alg = runLearner(episodes, learningRate);
 					double[][] QValues = alg.getQValues();
 					optimalPol = alg.getOptimalPolicy();
 
@@ -47,10 +72,10 @@ public class Main {
 
 	}
 
-	public static Qlearning runLearner(int maxEpisode, double omega){
+	public static Qlearning runLearner(int maxEpisode, Qlearning.LearningRate learningRate){
 		Environment towerOfHanoi=new Environment();
 		Qlearning alg = new Qlearning(maxEpisode, towerOfHanoi);
-		alg.learn(omega);
+		alg.learn(learningRate);
 
 		return alg;
 	}
